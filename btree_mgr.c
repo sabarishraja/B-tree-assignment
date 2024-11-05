@@ -191,39 +191,52 @@ RC createBtree (char *idxId, DataType keyType, int n) {
 }
 
 
-//Open btree
-extern RC openBtree (BTreeHandle **tree, char *idxId){
-    int rt_val = openPageFile( idxId, &(b_Tree_Mgmt -> fileHandler) ); // open the page file
-    
-    //printf("file opened");
+// Function to open an existing B-tree
+extern RC openBtree (BTreeHandle **tree, char *idxId) {
 
-    if (rt_val != RC_OK) { // check if file is opened
+    // Open the page file for the B-tree
+    printf("Opening page file: %s\n", idxId);
+    int rt_val = openPageFile(idxId, &(b_Tree_Mgmt->fileHandler)); 
+
+    // Check if the file was successfully opened
+    if (rt_val != RC_OK) {
+        printf("Failed to open page file. Error code: %d\n", rt_val);
         return rt_val; 
     }
+    printf("Page file opened successfully.\n");
 
-    // intialise the buffer manager and page handler
-    b_Tree_Mgmt -> bufferManager = MAKE_POOL();
-    b_Tree_Mgmt -> pageHandler = MAKE_PAGE_HANDLE();
-    initBufferPool( b_Tree_Mgmt -> bufferManager, idxId,10, RS_FIFO,NULL );
+    // Initialize the buffer manager and page handler for the B-tree
+    printf("Initializing buffer manager and page handler...\n");
+    b_Tree_Mgmt->bufferManager = MAKE_POOL();
+    b_Tree_Mgmt->pageHandler = MAKE_PAGE_HANDLE();
+    initBufferPool(b_Tree_Mgmt->bufferManager, idxId, 10, RS_FIFO, NULL);
+    printf("Buffer pool initialized.\n");
 
-    //printf("buffer pool initialized");
-
-    // reading meta data
+    // Read the metadata from the B-tree file
+    printf("Reading metadata from B-tree file...\n");
     file_Metadata fmd;
-    readMetaData( b_Tree_Mgmt -> bufferManager, b_Tree_Mgmt -> pageHandler, &fmd,0);
+    RC metaReadStatus = readMetaData(b_Tree_Mgmt->bufferManager, b_Tree_Mgmt->pageHandler, &fmd, 0);
+    
+    if (metaReadStatus != RC_OK) {
+        printf("Failed to read metadata. Error code: %d\n", metaReadStatus);
+        return metaReadStatus;
+    }
+    printf("Metadata read successfully.\n");
 
-    //printf("read meta data");
+    // Set up the tree handle and B-tree manager data using the read metadata
+    printf("Setting up tree handle and B-tree management data...\n");
+    tree_Handle->idxId = idxId;
+    tree_Handle->keyType = fmd.keyType;
+    b_Tree_Mgmt->fMD.number_of_pageNodes = fmd.number_of_pageNodes;
+    b_Tree_Mgmt->fMD.maxEntriesPerPage = fmd.maxEntriesPerPage;
+    b_Tree_Mgmt->fMD.rootpage_Number = fmd.rootpage_Number;
+    b_Tree_Mgmt->fMD.entry_Number = fmd.entry_Number;
 
-    // adding the data to tree handler and b tree manager
-    tree_Handle -> idxId = idxId;
-    tree_Handle -> keyType = fmd.keyType;
-    b_Tree_Mgmt -> fMD.number_of_pageNodes = fmd.number_of_pageNodes;
-    b_Tree_Mgmt -> fMD.maxEntriesPerPage = fmd.maxEntriesPerPage;
-    b_Tree_Mgmt -> fMD.rootpage_Number = fmd.rootpage_Number;
-    b_Tree_Mgmt -> fMD.entry_Number = fmd.entry_Number;
-
-    tree_Handle -> mgmtData = b_Tree_Mgmt;
+    // Link the management data to the tree handle
+    tree_Handle->mgmtData = b_Tree_Mgmt;
     *tree = tree_Handle;
+
+    printf("B-tree opened and initialized successfully.\n");
 
     return RC_OK;
 }
