@@ -241,28 +241,34 @@ extern RC openBtree (BTreeHandle **tree, char *idxId) {
     return RC_OK;
 }
 
-//Close
-extern RC closeBtree (BTreeHandle *tree){
-    // getting the buffer manager
+// Function to close the B-tree
+extern RC closeBtree (BTreeHandle *tree) {
+
+    // Get the buffer manager from the tree's management data
+    printf("Retrieving buffer manager for the B-tree.\n");
     BM_BufferPool *bm = ((tree_DS*)tree->mgmtData)->bufferManager;
-    // BM_PageHandle *ph = ((tree_DS*)tree->mgmtData)-> pageHandler;
-    // SM_FileHandle fh = ((tree_DS*)tree->mgmtData)->fileHandler;
-
-    char *data_str;
-
-    // wrting the data into disk before closing the buffer
-    allocate_Memory( &data_str );
-    formatMetaData( &(b_Tree_Mgmt->fMD), data_str );
-    writetoBuffer( b_Tree_Mgmt -> bufferManager, b_Tree_Mgmt -> pageHandler, data_str, 0 );
-    free_Memory( &data_str );
-    shutdownBufferPool( bm );
     
-    // freeing the space
-    free( b_Tree_Mgmt->bufferManager );
-    free( b_Tree_Mgmt->pageHandler );
-    free( tree->mgmtData );
+    // Prepare to write metadata back to disk before closing
+    printf("Writing B-tree metadata to disk before closing...\n");
+    char *data_str;
+    allocate_Memory(&data_str); // Allocate memory for the data
+    formatMetaData(&(b_Tree_Mgmt->fMD), data_str); // Format the metadata
+    writetoBuffer(b_Tree_Mgmt->bufferManager, b_Tree_Mgmt->pageHandler, data_str, 0); // Write metadata to disk
+    free_Memory(&data_str); // Free the memory allocated for the data
+    printf("Metadata written to disk successfully.\n");
+
+    // Shutdown the buffer pool to release resources
+    printf("Shutting down the buffer pool...\n");
+    shutdownBufferPool(bm);
+    printf("Buffer pool shutdown complete.\n");
+
+    // Free the allocated memory for the B-tree's data structures
+    printf("Freeing allocated memory for B-tree structures...\n");
+    free(b_Tree_Mgmt->bufferManager);
+    free(b_Tree_Mgmt->pageHandler);
+    free(tree->mgmtData);
     free(tree);
-    //free( tree_Handle );
+    printf("Memory freed successfully. B-tree closed.\n");
 
     return RC_OK;
 }
@@ -274,29 +280,33 @@ extern RC deleteBtree (char *idxId){
     return RC_OK;
 }
 
-//****************************************************************************************
+//************************************Access information about a B-tree*******************
 
-
-//************************************Access information about a b-tree*******************
-
-RC getNumNodes (BTreeHandle *tree, int *result){ // read the num of nodes
-    *result = ((tree_DS*)tree->mgmtData) -> fMD.number_of_pageNodes;
+// Get the number of nodes in the B-tree
+RC getNumNodes(BTreeHandle *tree, int *result) {
+    printf("Fetching the number of nodes in the B-tree...\n");
+    *result = ((tree_DS*)tree->mgmtData)->fMD.number_of_pageNodes; // Retrieve the number of page nodes
+    printf("Number of nodes: %d\n", *result);
     return RC_OK;
 }
 
-RC getKeyType(BTreeHandle *tree, DataType *result){ // get the key type
-    *result=((tree_DS*)tree->mgmtData)->fMD.keyType;
+// Get the key type used in the B-tree
+RC getKeyType(BTreeHandle *tree, DataType *result) {
+    printf("Retrieving the key type for the B-tree...\n");
+    *result = ((tree_DS*)tree->mgmtData)->fMD.keyType; // Retrieve the key type
+    printf("Key type retrieved successfully.\n");
     return RC_OK;
 }
 
-RC getNumEntries(BTreeHandle *tree, int *result){ // get number of entries
-    *result=((tree_DS*)tree->mgmtData)->fMD.entry_Number;
+// Get the number of entries in the B-tree
+RC getNumEntries(BTreeHandle *tree, int *result) {
+    printf("Fetching the number of entries in the B-tree...\n");
+    *result = ((tree_DS*)tree->mgmtData)->fMD.entry_Number; // Retrieve the number of entries
+    printf("Number of entries: %d\n", *result);
     return RC_OK;
 }
 
-//****************************************************************************************
-
-//***************************************Helper functions****************************
+//***************************************Initializing the Helper functions****************************
 
 int parseIntBySeperator(char **ptr, char c){
     char *tempPtr=*ptr;
