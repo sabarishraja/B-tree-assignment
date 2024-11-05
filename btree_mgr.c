@@ -308,25 +308,30 @@ RC getNumEntries(BTreeHandle *tree, int *result) {
 
 //***************************************Initializing the Helper functions****************************
 
-int parseIntBySeperator(char **ptr, char c){
-    char *tempPtr=*ptr;
-    char *val=(char*)malloc(100);
-    //printf("\nstart int seperator\n");
+int parseIntBySeperator(char **ptr, char c) {
+    // Store the current pointer position
+    char *tempPtr = *ptr;
+    char *val = (char*)malloc(100);
 
-    memset(val,'\0',sizeof(val));
+    // Clear memory for 'val'
+    memset(val, '\0', 100);
 
-    for(int i=0;*tempPtr!=c;i++,tempPtr++){
-        val[i]=*tempPtr;
+    // Loop through the string until the separator is found
+    for (int i = 0; *tempPtr != c; i++, tempPtr++) {
+        val[i] = *tempPtr;  // Store each character in 'val'
     }
 
-    int val2=atoi(val);
-    *ptr=tempPtr;
-    free(val);
-    
-    //printf("\nend int seperator\n");
+    // Convert the extracted string into an integer
+    int extractedValue = atoi(val);
 
-    return val2;
-    
+    // Update the original pointer position
+    *ptr = tempPtr;
+
+    // Free the dynamically allocated memory
+    free(val);
+
+    // Return the integer value
+    return extractedValue;
 }
 
 RC readMetaData(BM_BufferPool* bufferManager,BM_PageHandle* pageHandler,file_Metadata* fMD,int page_Number){
