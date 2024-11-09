@@ -13,7 +13,7 @@
 
 // Meta data of the file
 typedef struct fileMD {
-    int rootPgNumber;        // Root page number of the tree
+    int rootpage_Number;        // Root page number of the tree
     int numberOfNodes;       // Total number of nodes in the tree
     int numberOfEntries;     // Total number of entries in the file
     int keyType;             // Optional value to store the key type
@@ -38,10 +38,10 @@ typedef struct treeData {
 // Page Data
 typedef struct pageData {
     // Meta Data
-    int numberEntries;    // Number of entries in the page
+    int entry_number;    // Number of entries in the page
     int leaf;             // 1 if it's a leaf node, 0 otherwise
-    int parentnode;       // Parent node identifier
-    int pgNumber;         // Page number
+    int parent_Node;       // Parent node identifier
+    int page_Number;         // Page number
 
     float *pointers;      // Array of n+1 pointers for pages
     int *keys;            // Array of n keys for the page
@@ -101,21 +101,24 @@ RC updateChildNodesOfParentDown(BTreeHandle* tree, pageData node);
 // Leaf Page Retrieval
 RC getLeafPg(pageData root, BM_BufferPool* bm, BM_PageHandle* ph, int* leafPages);
 
+/*Initialization and Shutting of B-Tree Manager*/
+// Function to initialize the Index Manager
+extern RC initIndexManager(void *mgmtData) {
+    printf("Starting the initialization of Index Manager...\n");
+    
+    // Additional debug message for confirmation
+    printf("Index Manager has been successfully initialized!\n");
 
-//****************************************************************************************
-
-
-//************************************Initiate and Shutdown*******************************
-
-extern RC initIndexManager (void *mgmtData){
-    printf("Index Manager Intialized");
+    // Return success code
     return RC_OK;
 }
+// Function to shutdown the Index Manager
+extern RC shutdownIndexManager() {
+    printf("Shutting down the Index Manager...\n");
 
-extern RC shutdownIndexManager (){
+    // Returning success code upon shutdown
     return RC_OK;
 }
-
 //****************************************************************************************
 
 
@@ -145,7 +148,7 @@ if (fileStatus != RC_OK) {
 
 // Initialize the metadata for the B-tree
 btreeMt->fMD.numberOfNodes = 1;
-btreeMt->fMD.rootPgNumber = 1;
+btreeMt->fMD.rootpage_Number = 1;
 btreeMt->fMD.numberOfEntries = 0;
 btreeMt->fMD.maxEntriesPerPage = maxEntriesPerPage;
 
@@ -168,10 +171,10 @@ deallocateSpace(&metaBuffer);
 
 // Prepare the root page for initialization
 pageData rootPage;
-rootPage.pgNumber = 1;        // Assign page number 1 for the root page
+rootPage.page_Number = 1;        // Assign page number 1 for the root page
 rootPage.leaf = 1;            // Mark root as a leaf
-rootPage.parentnode = -1;     // Root has no parent node
-rootPage.numberEntries = 0;   // Initially, no entries in the root page
+rootPage.parent_Node = -1;     // Root has no parent node
+rootPage.entry_number = 0;   // Initially, no entries in the root page
 
 // Allocate memory for the root page buffer
 char *rootPageBuffer = NULL;
@@ -179,7 +182,7 @@ allocateSpace(&rootPageBuffer);
 
 // Prepare root page data and write to buffer
 preparePageDataToWrite(&rootPage, rootPageBuffer);
-pageWrite(btreeMt->bufferManager, btreeMt->pageHandler, rootPageBuffer, btreeMt->fMD.rootPgNumber);
+pageWrite(btreeMt->bufferManager, btreeMt->pageHandler, rootPageBuffer, btreeMt->fMD.rootpage_Number);
 
 // Release the allocated memory for the root page buffer
 deallocateSpace(&rootPageBuffer);
@@ -351,9 +354,9 @@ int getDataBySeperatorForInt(char **ptr, char c) {
 }
 
 
-RC readMetaData(BM_BufferPool* bufferManager, BM_PageHandle* pageHandler, fileMD* fMD, int pgNumber) {
+RC readMetaData(BM_BufferPool* bufferManager, BM_PageHandle* pageHandler, fileMD* fMD, int page_Number) {
     // Load metadata from specified page
-    if (pinPage(bufferManager, pageHandler, pgNumber) != RC_OK) {
+    if (pinPage(bufferManager, pageHandler, page_Number) != RC_OK) {
         return RC_ERROR;
     }
 
@@ -363,7 +366,7 @@ RC readMetaData(BM_BufferPool* bufferManager, BM_PageHandle* pageHandler, fileMD
     cursor++; 
 
     // Read root page number
-    fMD->rootPgNumber = getDataBySeperatorForInt(&cursor, '$');
+    fMD->rootpage_Number = getDataBySeperatorForInt(&cursor, '$');
     cursor++; // Advance to next section
 
     // Read total node count
@@ -419,15 +422,15 @@ RC readpageData(BM_BufferPool *bufferManager, BM_PageHandle *pageHandler, pageDa
     // Extract the page details from the data buffer
     pageData->leaf = getDataBySeperatorForInt(&dataPtr, '$');
     dataPtr++;
-    pageData->numberEntries = getDataBySeperatorForInt(&dataPtr, '$');
+    pageData->entry_number = getDataBySeperatorForInt(&dataPtr, '$');
     dataPtr++;
-    pageData->parentnode = getDataBySeperatorForInt(&dataPtr, '$');
+    pageData->parent_Node = getDataBySeperatorForInt(&dataPtr, '$');
     dataPtr++;
-    pageData->pgNumber = getDataBySeperatorForInt(&dataPtr, '$');
+    pageData->page_Number = getDataBySeperatorForInt(&dataPtr, '$');
     dataPtr++;
 
     // Allocate memory for child pointers and keys based on the number of entries
-    int entryCount = pageData->numberEntries;
+    int entryCount = pageData->entry_number;
     pageData->pointers = malloc((entryCount + 1) * sizeof(float));
     pageData->keys = malloc(entryCount * sizeof(int));
 
@@ -471,7 +474,7 @@ pageData locatePageToInsertData(BM_BufferPool *bufferManager, BM_PageHandle *pag
 
     // Otherwise, search for the appropriate child page within the key range
     int foundPage = 0;
-    for (size_t i = 0; i < root.numberEntries - 1 && !foundPage; i++) {
+    for (size_t i = 0; i < root.entry_number - 1 && !foundPage; i++) {
         if (key >= root.keys[i] && key < root.keys[i + 1]) {
             pageSearchNumber = (int)(root.pointers[i + 1]);
             readpageData(bufferManager, pageHandler, &searchPage, pageSearchNumber);
@@ -480,7 +483,7 @@ pageData locatePageToInsertData(BM_BufferPool *bufferManager, BM_PageHandle *pag
     }
 
     // If no appropriate page was found, search the last pointer in the root
-    pageSearchNumber = (int)(root.pointers[root.numberEntries]);
+    pageSearchNumber = (int)(root.pointers[root.entry_number]);
     readpageData(bufferManager, pageHandler, &searchPage, pageSearchNumber);
     return locatePageToInsertData(bufferManager, pageHandler, searchPage, key);
 }
@@ -492,7 +495,7 @@ RC newkeyAndPtrToLeaf(pageData* pageData, int key, RID rid) {
     
     // Initial indexing and loop through existing keys to find the correct insertion point
     int idx = 0;
-    while (idx < pageData->numberEntries) {
+    while (idx < pageData->entry_number) {
         if (key <= pageData->keys[idx]) break;
         
         // Copy existing keys and pointers up to the insertion point
@@ -502,7 +505,7 @@ RC newkeyAndPtrToLeaf(pageData* pageData, int key, RID rid) {
     }
 
     // Check for duplicate key
-    if (idx < pageData->numberEntries && key == pageData->keys[idx]) {
+    if (idx < pageData->entry_number && key == pageData->keys[idx]) {
         free(children);
         free(keys);
         return RC_IM_KEY_ALREADY_EXISTS;
@@ -515,20 +518,20 @@ RC newkeyAndPtrToLeaf(pageData* pageData, int key, RID rid) {
     idx++;
 
     // Shift remaining keys and pointers into the new arrays
-    for (int shiftIdx = idx; shiftIdx < pageData->numberEntries + 1; shiftIdx++) {
+    for (int shiftIdx = idx; shiftIdx < pageData->entry_number + 1; shiftIdx++) {
         children[shiftIdx] = pageData->pointers[shiftIdx - 1];
         keys[shiftIdx] = pageData->keys[shiftIdx - 1];
     }
 
     // Mark the end of pointers
-    children[pageData->numberEntries + 1] = -1;
+    children[pageData->entry_number + 1] = -1;
 
     // Free old memory and assign new arrays to pageData
     free(pageData->keys);
     free(pageData->pointers);
     pageData->keys = keys;
     pageData->pointers = children;
-    pageData->numberEntries++;
+    pageData->entry_number++;
 
     return RC_OK;
 }
@@ -576,7 +579,7 @@ RC formatDataofkeyandPtr(pageData* pageData, char* content) {
     char *cursor = content;
 
     // Loop over entries in pageData using a for loop
-    for (int idx = 0; idx < pageData->numberEntries; idx++) {
+    for (int idx = 0; idx < pageData->entry_number; idx++) {
         int childValue = round(pageData->pointers[idx] * 10);
         int slot = childValue % 10;
         int pageNum = childValue / 10;
@@ -591,7 +594,7 @@ RC formatDataofkeyandPtr(pageData* pageData, char* content) {
     }
 
     // Append the final pointer value as a float
-    sprintf(cursor, "%0.1f$", pageData->pointers[pageData->numberEntries]);
+    sprintf(cursor, "%0.1f$", pageData->pointers[pageData->entry_number]);
 
     return RC_OK;
 }
@@ -605,7 +608,7 @@ RC prepareMetaData(fileMD* fMD, char* data) {
 
     // Use snprintf to format the metadata string more safely
     int written = snprintf(data, 100, "$%d$%d$%d$%d$%d$", 
-                           fMD->rootPgNumber, 
+                           fMD->rootpage_Number, 
                            fMD->numberOfNodes, 
                            fMD->numberOfEntries, 
                            fMD->maxEntriesPerPage, 
@@ -633,9 +636,9 @@ RC preparePageDataToWrite(pageData* pageData, char* content) {
     // Start by formatting the basic page information into the content string
     int written = snprintf(content, 100, "$%d$%d$%d$%d$",
                            pageData->leaf, 
-                           pageData->numberEntries, 
-                           pageData->parentnode, 
-                           pageData->pgNumber);
+                           pageData->entry_number, 
+                           pageData->parent_Node, 
+                           pageData->page_Number);
 
     // Check if snprintf was successful
     if (written < 0) {
@@ -643,7 +646,7 @@ RC preparePageDataToWrite(pageData* pageData, char* content) {
     }
 
     // If the page has entries, append the keys and pointers to the content
-    if (pageData->numberEntries > 0) {
+    if (pageData->entry_number > 0) {
         char* keysAndPointers = NULL;
 
         // Allocate memory for the keys and pointers data
@@ -666,17 +669,40 @@ RC preparePageDataToWrite(pageData* pageData, char* content) {
     return RC_OK;
 }
 
-RC pageWrite(BM_BufferPool* bufferManager,BM_PageHandle* pageHandler,char* content,int pageNumber){
-    //printf("page write\n");
-    // Pin the page with specified index to modify its contents
-    pinPage(bufferManager,pageHandler,pageNumber);
-    //printf("page pinned");
-    // Clear existing data in the page buffer and set new content
-    memset(pageHandler->data,'\0',100); // Clear up to 100 characters
-    sprintf(pageHandler->data,"%s",content); // Copy new data into the page
-    // Mark the page as dirty since its content has been changed
-    markDirty(bufferManager,pageHandler);
-    unpinPage(bufferManager,pageHandler); 
+/* Page Writing Function for Buffer Pool */
+/* Enhanced Page Writing Function for Buffer Pool */
+
+// Helper function to reset the page buffer
+void resetPageBuffer(BM_PageHandle* pageHandler) {
+    // Clear all data in the page buffer to ensure it's empty before writing new content
+    memset(pageHandler->data, 0, 100);  // Clear the buffer (up to 100 chars)
+}
+
+// Function to handle writing data to a page within the buffer pool
+RC pageWrite(BM_BufferPool* bufferManager, BM_PageHandle* pageHandler, char* content, int pageNumber) {
+    // Inform that page is about to be pinned
+    // printf("Initiating write operation on page %d.\n", pageNumber);
+    
+    // Pin the page so we can modify its content
+    pinPage(bufferManager, pageHandler, pageNumber);
+    
+    // Reset the page buffer (clear existing data)
+    resetPageBuffer(pageHandler);
+    
+    // Safely copy the provided content into the page buffer
+    // Limiting content to 100 characters to avoid buffer overflow
+    strncpy(pageHandler->data, content, 100);
+    
+    // Inform that the page content has been changed, marking it as dirty
+    markDirty(bufferManager, pageHandler);
+    
+    // Once done, unpin the page so other processes can access it
+    unpinPage(bufferManager, pageHandler);
+    
+    // Operation successfully completed
+    // printf("Page %d write operation completed successfully.\n", pageNumber);
+    
+    return RC_OK;  // Indicate success
 }
 
 RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
@@ -694,12 +720,12 @@ RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
         readpageData(bufferManager,pageHandler,&newPageToAdd,pgNumb);
         insertKeyAndPointerInNonLeaf(&newPageToAdd,keyData);
         
-        if(newPageToAdd.numberEntries > maxEntity){ // if page have more than max entries
+        if(newPageToAdd.entry_number > maxEntity){ // if page have more than max entries
             // if is true, divide and copy the data into new pages, the key of new node will be in right child and old node will be in left child. 
             float *oldNodeChildren = (float *)malloc(10*sizeof(float));
             int count = 0, *oldNodeKeys = (int *)malloc(10*sizeof(int));
             size_t index = 0;
-            while(index < (int)ceil((newPageToAdd.numberEntries)/2))
+            while(index < (int)ceil((newPageToAdd.entry_number)/2))
             {
                 oldNodeKeys[count] = newPageToAdd.keys[index];
                 oldNodeChildren[count] = newPageToAdd.pointers[index];
@@ -712,7 +738,7 @@ RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
             int count2 = 0,*keysForNewNode = (int *)malloc(10*sizeof(int));
             float *childrenForNewNode = (float *)malloc(10*sizeof(float));
             index=count;
-            while(index < newPageToAdd.numberEntries + 2)
+            while(index < newPageToAdd.entry_number + 2)
             {
                 keysForNewNode[count2] = newPageToAdd.keys[index];
                 childrenForNewNode[count2] = newPageToAdd.pointers[index];
@@ -730,37 +756,37 @@ RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
             //Right child data
             pageData pRChild;
             pRChild.leaf = 0;
-            pRChild.pgNumber = curNumOfNodes;
-            pRChild.numberEntries = (int)floor((maxEntity+1)/2);
+            pRChild.page_Number = curNumOfNodes;
+            pRChild.entry_number = (int)floor((maxEntity+1)/2);
             pRChild.keys = keysForNewNode;
             pRChild.pointers = childrenForNewNode;
-            pRChild.parentnode = newPageToAdd.parentnode;
+            pRChild.parent_Node = newPageToAdd.parent_Node;
 
             //data update on right child
             char *dataStr;
             allocateSpace(&dataStr);
             preparePageDataToWrite(&pRChild,dataStr);
-            pageWrite(bufferManager,pageHandler,dataStr,pRChild.pgNumber);
+            pageWrite(bufferManager,pageHandler,dataStr,pRChild.page_Number);
             deallocateSpace(&dataStr);
 
             //Left child Data
             pageData pLChild;
             pLChild.leaf = 0;
-            pLChild.pgNumber = newPageToAdd.pgNumber;
-            pLChild.numberEntries = (int)floor((maxEntity+1)/2);
+            pLChild.page_Number = newPageToAdd.page_Number;
+            pLChild.entry_number = (int)floor((maxEntity+1)/2);
             pLChild.keys = oldNodeKeys;
             pLChild.pointers = oldNodeChildren;
-            pLChild.parentnode = newPageToAdd.parentnode;
+            pLChild.parent_Node = newPageToAdd.parent_Node;
 
             //Update data on left child
             allocateSpace(&dataStr);
             preparePageDataToWrite(&pLChild,dataStr);
-            pageWrite(bufferManager,pageHandler,dataStr,pLChild.pgNumber);
+            pageWrite(bufferManager,pageHandler,dataStr,pLChild.page_Number);
             deallocateSpace(&dataStr);
 
-            int pgNum = newPageToAdd.parentnode;
-            float left = pLChild.pgNumber;
-            float right = pRChild.pgNumber;
+            int pgNum = newPageToAdd.parent_Node;
+            float left = pLChild.page_Number;
+            float right = pRChild.page_Number;
 
             data kdata;
             kdata.key = newPageToAdd.keys[(int)ceil((maxEntity+1)/2)];
@@ -778,7 +804,7 @@ RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
             char *dataString;
             allocateSpace(&dataString);
             preparePageDataToWrite(&newPageToAdd,dataString);
-            pageWrite(bufferManager,pageHandler,dataString,newPageToAdd.pgNumber);
+            pageWrite(bufferManager,pageHandler,dataString,newPageToAdd.page_Number);
             deallocateSpace(&dataString);
             return RC_OK;   
         }
@@ -789,7 +815,7 @@ RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
         ensureCapacity(curNumOfNodes+2,&fileHandler);
 
         pageData newRoot; // making new node as root
-        newRoot.pgNumber = curNumOfNodes+1;
+        newRoot.page_Number = curNumOfNodes+1;
 
         int *keysofNewRoot = (int *)malloc(10*sizeof(int));
         keysofNewRoot[0] = keyData.key;
@@ -800,17 +826,17 @@ RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
 
         newRoot.keys = keysofNewRoot;
         newRoot.pointers= childrenofNewRoot;
-        newRoot.numberEntries = 1;
-        newRoot.parentnode = -1;
+        newRoot.entry_number = 1;
+        newRoot.parent_Node = -1;
         newRoot.leaf = 0;
 
         ((treeData*)treeHandler->mgmtData)->fMD.numberOfNodes++;
-        ((treeData*)treeHandler->mgmtData)->fMD.rootPgNumber = newRoot.pgNumber;
+        ((treeData*)treeHandler->mgmtData)->fMD.rootpage_Number = newRoot.page_Number;
 
         char *dataString;
         allocateSpace(&dataString);
         preparePageDataToWrite(&newRoot,dataString);
-        pageWrite(bufferManager,pageHandler,dataString,newRoot.pgNumber);
+        pageWrite(bufferManager,pageHandler,dataString,newRoot.page_Number);
         deallocateSpace(&dataString);
 
         //updating child nodes of each parent
@@ -818,36 +844,36 @@ RC propagateUp(BTreeHandle *treeHandler,int pgNumb,data keyData){
     }
 }
 
-RC updateChildNodesOfParentDown(BTreeHandle *tree, pageData dataNode) {
-    // Retrieve buffer manager and page handler from the tree structure
+RC updateChildNodesOfParentDown(BTreeHandle *tree, pageData nodeData) {
+    // Access the buffer manager and page handler from the tree structure
     treeData *treeInfo = (treeData *)tree->mgmtData;
     BM_BufferPool *bufferManager = treeInfo->bufferManager;
     BM_PageHandle *pageHandler = treeInfo->pageHandler;
 
-    // Loop through the child pointers of the node to update their parent node
+    // Iterate through each child pointer in the parent node
     size_t childIndex = 0;
-    while (childIndex <= dataNode.numberEntries) {
-        // Fetch the child page using the pointer from the parent node
+    while (childIndex <= nodeData.entry_number) {
+        // Load the child page using the pointer from the parent node
         pageData childPage;
-        readpageData(bufferManager, pageHandler, &childPage, dataNode.pointers[childIndex]);
+        readpageData(bufferManager, pageHandler, &childPage, nodeData.pointers[childIndex]);
 
-        // Set the current node as the parent of the child
-        childPage.parentnode = dataNode.pgNumber;
+        // Update the parent node for the child
+        childPage.parent_Node = nodeData.page_Number;
 
-        // Prepare and write the updated child page to the buffer pool
-        char *pageContent;
-        allocateSpace(&pageContent);
-        preparePageDataToWrite(&childPage, pageContent);
-        pageWrite(bufferManager, pageHandler, pageContent, childPage.pgNumber);
-        deallocateSpace(&pageContent);
+        // Allocate space for the child page and write the updated data back to the buffer pool
+        char *childPageContent;
+        allocateSpace(&childPageContent);
+        preparePageDataToWrite(&childPage, childPageContent);
+        pageWrite(bufferManager, pageHandler, childPageContent, childPage.page_Number);
+        deallocateSpace(&childPageContent);
 
-        // Move to the next child node
+        // Move to the next child in the node
         childIndex++;
     }
 
     return RC_OK;
 }
-;
+
 
 
 
@@ -855,13 +881,13 @@ RC insertKeyAndPointerInNonLeaf(pageData* pageData,data keyData){
     int *updatedKeys = (int*)malloc(sizeof(int)*10); // Array for new keys
     float *updatedPointers = (float*)malloc(sizeof(int)*10); // Array for new pointers
     int currentPosition = 0;
-    while(keyData.key > pageData->keys[currentPosition] && currentPosition < pageData->numberEntries){
+    while(keyData.key > pageData->keys[currentPosition] && currentPosition < pageData->entry_number){
         updatedKeys[currentPosition] = pageData->keys[currentPosition];
         updatedPointers[currentPosition] = pageData->pointers[currentPosition];
         currentPosition++;
     }
 
-    if(keyData.key == pageData->keys[currentPosition] && currentPosition < pageData->numberEntries){
+    if(keyData.key == pageData->keys[currentPosition] && currentPosition < pageData->entry_number){
         return RC_IM_KEY_ALREADY_EXISTS;
     }
     else{
@@ -874,11 +900,11 @@ RC insertKeyAndPointerInNonLeaf(pageData* pageData,data keyData){
         
     }
 
-    // for (int j = currentPosition; j < page->numberEntries + 2; j++) {
+    // for (int j = currentPosition; j < page->entry_number + 2; j++) {
     // updatedKeys[j] = page->keys[j - 1];
     // updatedPointers[j] = page->pointers[j - 1];
     // }
-    while(currentPosition<pageData->numberEntries+2){
+    while(currentPosition<pageData->entry_number+2){
         updatedKeys[currentPosition]=pageData->keys[currentPosition-1];
         updatedPointers[currentPosition]=pageData->pointers[currentPosition-1];
         currentPosition++;
@@ -887,7 +913,7 @@ RC insertKeyAndPointerInNonLeaf(pageData* pageData,data keyData){
     updatedPointers[currentPosition] = -1;
     free(pageData->keys);
     free(pageData->pointers);
-    pageData->numberEntries++;
+    pageData->entry_number++;
     pageData->pointers = updatedPointers;
     pageData->keys = updatedKeys;
    
@@ -901,7 +927,7 @@ RC keyAndPointerDeletingInLeaf(pageData* dataPage, int keyToDelete) {
     bool keyFound = false;          // Flag to track if the key is found
 
     // Loop through existing keys and prepare updated keys/pointers
-    for (int i = 0; i < dataPage->numberEntries; i++) {
+    for (int i = 0; i < dataPage->entry_number; i++) {
         if (dataPage->keys[i] == keyToDelete) {
             keyFound = true;  // Set the flag if the key is found
             continue;         // Skip this key and don't copy it to the new arrays
@@ -918,7 +944,7 @@ RC keyAndPointerDeletingInLeaf(pageData* dataPage, int keyToDelete) {
     }
 
     // Update the number of entries on the page
-    dataPage->numberEntries -= 1;
+    dataPage->entry_number -= 1;
 
     // Set the last pointer to an invalid value (-1)
     tempChildren[newKeyCount] = -1;
@@ -941,7 +967,7 @@ RC getLeafPg(pageData currentPage, BM_BufferPool* bufferManager, BM_PageHandle* 
     RC status = RC_OK;  // Variable to track function status
 
     // Traverse through internal nodes until we find leaf nodes
-    while (!currentPage.leaf && childIdx < currentPage.numberEntries + 1) {
+    while (!currentPage.leaf && childIdx < currentPage.entry_number + 1) {
         pageData childPage;  // Initialize child page
         int childPageNum = (int)currentPage.pointers[childIdx];  // Get child page number
 
@@ -960,7 +986,7 @@ RC getLeafPg(pageData currentPage, BM_BufferPool* bufferManager, BM_PageHandle* 
 
     // Once a leaf page is found, store its page number
     if (currentPage.leaf) {
-        leafPages[counter] = currentPage.pgNumber;
+        leafPages[counter] = currentPage.page_Number;
         counter++;  // Increment the leaf page counter
     }
 
@@ -983,7 +1009,7 @@ RC findKey(BTreeHandle *tree, Value *key, RID *result) {
     pageData rootPageData;  // Root page data
 
     // Retrieve the root page number
-    int rootPageNumber = ((treeData*)tree->mgmtData)->fMD.rootPgNumber;
+    int rootPageNumber = ((treeData*)tree->mgmtData)->fMD.rootpage_Number;
 
     // Read the root page into memory
     if (readpageData(bufferManager, pageHandler, &rootPageData, rootPageNumber) != RC_OK) {
@@ -996,7 +1022,7 @@ RC findKey(BTreeHandle *tree, Value *key, RID *result) {
     size_t idx = 0;  // To iterate through entries on the page
 
     while (1) {
-        switch (idx < leafPageData.numberEntries) {
+        switch (idx < leafPageData.entry_number) {
             case 0:  // Exit condition when index is out of bounds
                 return RC_IM_KEY_NOT_FOUND;
             default:  // Check for the key in the current entry
@@ -1033,7 +1059,7 @@ RC insertKey (BTreeHandle *tree, Value *key, RID rid) {
 
     int maxEntry = treeMgmtData->fMD.maxEntriesPerPage;
     int curNumOfNode = treeMgmtData->fMD.numberOfNodes;
-    int rootPgNum = treeMgmtData->fMD.rootPgNumber;
+    int rootPgNum = treeMgmtData->fMD.rootpage_Number;
 
     // Initialize pageData structure to hold root page data
     pageData rootPage;
@@ -1058,15 +1084,15 @@ RC insertKey (BTreeHandle *tree, Value *key, RID rid) {
 
     //printf("\nnew key and ptr to leaf!------------\n");
 
-    if (insertionPage.numberEntries > maxEntry) { // check if there is no space in the leaf node
+    if (insertionPage.entry_number > maxEntry) { // check if there is no space in the leaf node
         
         // Creating new nodes
         int counter = 0;
         float *newNodechildren = (float *)malloc(10 * sizeof(float));
         int *newNodeKeys = (int *)malloc(10 * sizeof(int));
         
-        size_t i = (int)ceil((insertionPage.numberEntries) / 2) + 1;
-        while (i < insertionPage.numberEntries) {
+        size_t i = (int)ceil((insertionPage.entry_number) / 2) + 1;
+        while (i < insertionPage.entry_number) {
             newNodechildren[counter] = insertionPage.pointers[i];
             newNodeKeys[counter] = insertionPage.keys[i];
             counter++;
@@ -1079,7 +1105,7 @@ RC insertKey (BTreeHandle *tree, Value *key, RID rid) {
         float *oldNodeChildren = (float *)malloc(10 * sizeof(float));
 
         i = 0;
-        while (i <= (int)ceil((insertionPage.numberEntries) / 2)) {
+        while (i <= (int)ceil((insertionPage.entry_number) / 2)) {
             oldNodeKeys[counter] = insertionPage.keys[i];
             oldNodeChildren[counter] = insertionPage.pointers[i];
             counter++;
@@ -1094,12 +1120,12 @@ curNumOfNode++;
 
 // Configure the right child node
 pageData rightChild = {
-    .pgNumber = curNumOfNode,
+    .page_Number = curNumOfNode,
     .leaf = 1,
     .pointers = newNodechildren,
-    .numberEntries = (int)floor((maxEntry + 1) / 2),
+    .entry_number = (int)floor((maxEntry + 1) / 2),
     .keys = newNodeKeys,
-    .parentnode = (insertionPage.parentnode == -1) ? 3 : insertionPage.parentnode
+    .parent_Node = (insertionPage.parent_Node == -1) ? 3 : insertionPage.parent_Node
 };
 
 //printf("start update right child");
@@ -1108,18 +1134,18 @@ pageData rightChild = {
 char *dataHolder;
 allocateSpace(&dataHolder);
 preparePageDataToWrite(&rightChild, dataHolder);
-pageWrite(bufferManager, pageHandler, dataHolder, rightChild.pgNumber);
+pageWrite(bufferManager, pageHandler, dataHolder, rightChild.page_Number);
 deallocateSpace(&dataHolder);
 //printf("updated right child");
 
 // Configure the left child node
 pageData leftChild = {
     .leaf = 1,
-    .pgNumber = insertionPage.pgNumber,
-    .numberEntries = (int)ceil((maxEntry + 1) / 2) + 1,
+    .page_Number = insertionPage.page_Number,
+    .entry_number = (int)ceil((maxEntry + 1) / 2) + 1,
     .keys = oldNodeKeys,
     .pointers = oldNodeChildren,
-    .parentnode = (insertionPage.parentnode == -1) ? 3 : insertionPage.parentnode
+    .parent_Node = (insertionPage.parent_Node == -1) ? 3 : insertionPage.parent_Node
 };
 
 //printf("start update left child");
@@ -1127,13 +1153,13 @@ pageData leftChild = {
 // Update left child node data
 allocateSpace(&dataHolder);
 preparePageDataToWrite(&leftChild, dataHolder);
-pageWrite(bufferManager, pageHandler, dataHolder, leftChild.pgNumber);
+pageWrite(bufferManager, pageHandler, dataHolder, leftChild.page_Number);
 deallocateSpace(&dataHolder);
 //printf("updated left child");
 
 // Set up data for upward propagation
-int pgNumber = insertionPage.parentnode;
-float left = leftChild.pgNumber, right = rightChild.pgNumber;
+int page_Number = insertionPage.parent_Node;
+float left = leftChild.page_Number, right = rightChild.page_Number;
 
 data keyData = {
     .left = left,
@@ -1142,7 +1168,7 @@ data keyData = {
 };
 
 //printf("propagate start");
-propagateUp(tree, pgNumber, keyData); // propagate up
+propagateUp(tree, page_Number, keyData); // propagate up
 //printf("propagate end");
 
 } else {
@@ -1150,7 +1176,7 @@ propagateUp(tree, pgNumber, keyData); // propagate up
     //printf("at root--------");
     allocateSpace(&dataHolder);
     preparePageDataToWrite(&insertionPage, dataHolder);
-    pageWrite(bufferManager, pageHandler, dataHolder, insertionPage.pgNumber);
+    pageWrite(bufferManager, pageHandler, dataHolder, insertionPage.page_Number);
     deallocateSpace(&dataHolder);
     //printf("done root");
 }
@@ -1172,7 +1198,7 @@ RC deleteKey(BTreeHandle *tree, Value *key) {
     BM_PageHandle *pageHandler = treeMgmt->pageHandler;
 
     // Retrieve root page metadata and data
-    int rootPageNumber = treeMgmt->fMD.rootPgNumber;
+    int rootPageNumber = treeMgmt->fMD.rootpage_Number;
     pageData rootPageData;
     if (readpageData(bufferManager, pageHandler, &rootPageData, rootPageNumber) != RC_OK) {
         return RC_READ_FAILED; // Return an error if the root page data could not be read
@@ -1196,7 +1222,7 @@ RC deleteKey(BTreeHandle *tree, Value *key) {
     preparePageDataToWrite(&targetPage, pageContent); // Prepare data for writing to the page
 
     // Write the updated data back to the page and mark it as dirty
-    if (pageWrite(bufferManager, pageHandler, pageContent, targetPage.pgNumber) != RC_OK) {
+    if (pageWrite(bufferManager, pageHandler, pageContent, targetPage.page_Number) != RC_OK) {
         deallocateSpace(&pageContent);
         return RC_WRITE_FAILED; // Error writing data back to page
     }
@@ -1221,7 +1247,7 @@ RC openTreeScan(BTreeHandle *tree, BT_ScanHandle **handle) {
 
     BM_PageHandle *pageHandler = ((treeData*)tree->mgmtData)->pageHandler;
     BM_BufferPool *bufferManager = ((treeData*)tree->mgmtData)->bufferManager;
-    int rootPageNum = ((treeData*)tree->mgmtData)->fMD.rootPgNumber;
+    int rootPageNum = ((treeData*)tree->mgmtData)->fMD.rootpage_Number;
 
     // Read root page data
     pageData rootPg;
@@ -1270,7 +1296,7 @@ RC nextEntry(BT_ScanHandle *handle, RID *result) {
     BM_PageHandle *pageHandler = ((treeData*)handle->tree->mgmtData)->pageHandler; 
     scanData* scanData = handle->mgmtData;
 
-    switch (scanData->curPosInPage >= scanData->curPageData.numberEntries) {
+    switch (scanData->curPosInPage >= scanData->curPageData.entry_number) {
         case 1: // Check if the current position is beyond the number of entries on the current page
             switch (scanData->nextPagePosInLeafPages) {
                 case -1:  // No more leaf pages to scan

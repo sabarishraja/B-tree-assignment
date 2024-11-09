@@ -3,7 +3,7 @@
 #include<sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 FILE *globalFile;
 
 // dummy function, as it has no use we have left it empty
